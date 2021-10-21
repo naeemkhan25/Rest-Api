@@ -62,17 +62,78 @@ class noitifier extends WP_REST_Controller
 
         foreach ($contacts as $contact) {
             $response = $this->prepare_item_for_response($contact, $request);
-            return $response;
+
             $data[]   = $this->prepare_response_for_collection($response);
         }
+        $total     = wd_ac_address_count();
+        $max_pages = ceil($total / (int) $args['number']);
+
+        $response = rest_ensure_response($data);
+
+        $response->header('X-WP-Total', (int) $total);
+        $response->header('X-WP-TotalPages', (int) $max_pages);
+
+
+        return $response;
     }
     public function prepare_item_for_response($item, $request)
     {
         $data   = [];
         $fields = $this->get_fields_for_response($request);
+        if (in_array('id', $fields, true)) {
+            $data['id'] = (int) $item->id;
+        }
 
-        return $fields;
+        if (in_array('name', $fields, true)) {
+            $data['name'] = $item->name;
+        }
+
+        if (in_array('address', $fields, true)) {
+            $data['address'] = $item->address;
+        }
+
+        if (in_array('phone', $fields, true)) {
+            $data['phone'] = $item->phone;
+        }
+
+        if (in_array('date', $fields, true)) {
+            $data['date'] = mysql_to_rfc3339($item->created_at);
+        }
+
+        $context = !empty($request['context']) ? $request['context'] : 'view';
+        $data    = $this->filter_response_by_context($data, $context);
+
+        $response = rest_ensure_response($data);
+        //links use korno
+        $response->add_links($this->prepare_links($item));
+
+
+        return $response;
     }
+
+    /**
+     * Prepares links for the request.
+     *
+     * @param \WP_Post $post Post object.
+     *
+     * @return array Links for the given post.
+     */
+    protected function prepare_links($item)
+    {
+        $base = sprintf('%s/%s', $this->namespace, $this->rest_base);
+
+        $links = [
+            'self' => [
+                'href' => rest_url(trailingslashit($base) . $item->id),
+            ],
+            'collection' => [
+                'href' => rest_url($base),
+            ],
+        ];
+
+        return $links;
+    }
+
     public function get_collection_params()
     {
         $params = parent::get_collection_params();

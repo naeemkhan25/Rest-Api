@@ -14,3 +14,8 @@ function wd_ac_get_addresses($args = [])
     $items = $wpdb->get_results($sql);
     return $items;
 }
+function wd_ac_address_count()
+{
+    global $wpdb;
+    return (int) $wpdb->get_var("SELECT count(id) FROM {$wpdb->prefix}addresses");
+}
